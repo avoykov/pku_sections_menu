@@ -1,0 +1,6 @@
+name = PKU sections menu
+description = Generates missing menu items for each space, depending from sections.
+core = 7.x
+package = PKU Playbook
+project path = sites/all/modules/custom
+configure = admin/config/pku-sections-menu/settings
