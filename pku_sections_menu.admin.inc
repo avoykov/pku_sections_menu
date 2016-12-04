@@ -46,13 +46,17 @@ function pku_sections_menu_settings_form_submit($form, $form_state) {
       $tree = og_menu_single_children_items($mlid);
       $node_links = array();
       menu_tree_collect_node_links($tree, $node_links);
-      $created = array_keys($node_links);
+      $created['nids'] = array_keys($node_links);
+      $created['titles'] = array_map(function ($i) {
+        $a = reset($i);
+        return $a['link_title'];
+      }, $node_links);
       $nids = array_map(function ($i) {
         return $i->nid;
       }, $view->result);
       $nodes = entity_load('node', $nids);
       foreach ($nodes as $node) {
-        if (!in_array($node->nid, $created)) {
+        if (!in_array($node->nid, $created['nids']) && !in_array($node->title, $created['titles'])) {
           $links[] = array(
             'plid' => $mlid,
             'link_title' => $node->title,
