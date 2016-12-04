@@ -1,0 +1,78 @@
+<?php
+/**
+ * @file
+ * Contains all hooks definitions, common and helper functions.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function pku_sections_menu_menu() {
+  $items = array();
+
+  $items['admin/config/pku-sections-menu'] = array(
+    'title' => 'PKU sections menu',
+    'description' => 'Settings which relates to PKU sections menu.',
+    'position' => 'left',
+    'weight' => 20,
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+
+  $items['admin/config/pku-sections-menu/settings'] = array(
+    'title' => 'Generating missing menu links',
+    'weight' => -25,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pku_sections_menu_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'pku_sections_menu.admin.inc',
+  );
+
+
+  return $items;
+}
+
+/**
+ * Creates a batch for updating the node fields.
+ */
+function _pku_sections_menu_batch($links, &$context) {
+  if (empty($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['total'] = count($links);
+  }
+
+  $part = array_slice($links, $context['sandbox']['progress'], 20);
+
+  foreach ($part as $link) {
+    menu_link_save($link);
+  }
+
+  $context['sandbox']['progress'] += count($part);
+  $context['results'] = $context['sandbox']['progress'];
+
+  $context['message'] = t('Generated @progress out of @total.', array(
+    '@progress' => $context['sandbox']['progress'],
+    '@total' => $context['sandbox']['total'],
+  ));
+
+  if ($context['sandbox']['progress'] != $context['sandbox']['total']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['total'];
+  }
+}
+
+/**
+ * Finish callback for the pku_section_menu batch operation.
+ *
+ * @see _pku_sections_menu_batch()
+ * @see pku_sections_menu_settings_form_submit()
+ */
+function _pku_sections_menu_batch_finished($success, $results, $operations) {
+  $message = t('Finished with an error.');
+  if ($success) {
+    $message = format_plural($results, 'One item processed.', '@count items processed.');
+  }
+
+  drupal_set_message($message);
+}
