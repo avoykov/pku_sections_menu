@@ -35,24 +35,27 @@ function pku_sections_menu_settings_form_submit($form, $form_state) {
     $links = array();
     foreach ($spaces as $space) {
       // Get all related sections.
-      $view = views_get_view('pm_section_pages');
-      $view->set_display('section_pages_within_spaces');
-      $view->set_arguments(array(1 => $space->nid));
-      $view->pre_execute();
-      $view->execute();
+      $query = db_select('node', 'node');
+      $query->leftJoin('flagging', 'flagging_node', 'node.nid = flagging_node.entity_id AND flagging_node.fid = \'2\'');
+      $query->leftJoin('og_membership', 'og_membership_node', 'node.nid = og_membership_node.etid AND og_membership_node.entity_type = \'node\'');
+      $query->innerJoin('og_membership', 'og_membership', 'node.nid = og_membership.etid AND (og_membership.entity_type = \'node\' AND og_membership.entity_type = \'node\')');
+      $query->where("(( (og_membership_node.gid = :gid ) )AND(( (node.status = '1') AND (node.type IN  ('oa_section')) AND (flagging_node.uid IS NULL ) AND (og_membership.gid = :gid) )))", array(':gid' => $space->nid));
+      $query->fields('node', array('nid'));
+      $nids = $query->execute()->fetchCol();
       // Get id of menu which related to this space.
       $mlid = og_menu_single_get_link_mlid($space->type, $space->nid);
       // And all already created links.
       $tree = og_menu_single_children_items($mlid);
       $node_links = array();
       menu_tree_collect_node_links($tree, $node_links);
-      $created = array_keys($node_links);
-      $nids = array_map(function ($i) {
-        return $i->nid;
-      }, $view->result);
+      $created['nids'] = array_keys($node_links);
+      $created['titles'] = array_map(function ($i) {
+        $a = reset($i);
+        return $a['link_title'];
+      }, $node_links);
       $nodes = entity_load('node', $nids);
       foreach ($nodes as $node) {
-        if (!in_array($node->nid, $created)) {
+        if (!in_array($node->nid, $created['nids']) && !in_array($node->title, $created['titles'])) {
           $links[] = array(
             'plid' => $mlid,
             'link_title' => $node->title,
