@@ -35,13 +35,12 @@ function pku_sections_menu_settings_form_submit($form, $form_state) {
     $links = array();
     foreach ($spaces as $space) {
       // Get all related sections.
-      $query = db_select('node', 'node');
-      $query->leftJoin('flagging', 'flagging_node', 'node.nid = flagging_node.entity_id AND flagging_node.fid = \'2\'');
-      $query->leftJoin('og_membership', 'og_membership_node', 'node.nid = og_membership_node.etid AND og_membership_node.entity_type = \'node\'');
-      $query->innerJoin('og_membership', 'og_membership', 'node.nid = og_membership.etid AND (og_membership.entity_type = \'node\' AND og_membership.entity_type = \'node\')');
-      $query->where("(( (og_membership_node.gid = :gid ) )AND(( (node.status = '1') AND (node.type IN  ('oa_section')) AND (flagging_node.uid IS NULL ) AND (og_membership.gid = :gid) )))", array(':gid' => $space->nid));
-      $query->fields('node', array('nid'));
-      $nids = $query->execute()->fetchCol();
+      $view = views_get_view('pm_section_pages', TRUE);
+      $view->set_display('section_pages_within_spaces');
+      $view->set_arguments(array($space->nid));
+      $view->pre_execute();
+      $view->execute();
+      $view->render();
       // Get id of menu which related to this space.
       $mlid = og_menu_single_get_link_mlid($space->type, $space->nid);
       // And all already created links.
@@ -53,6 +52,21 @@ function pku_sections_menu_settings_form_submit($form, $form_state) {
         $a = reset($i);
         return $a['link_title'];
       }, $node_links);
+
+      $query_string = (string) $view->build_info['query'];
+      $query_string = str_replace('{', '', $query_string);
+      $query_string = str_replace('}', '', $query_string);
+      $query_params = $view->build_info['query']->getArguments();
+      $query_params[':db_condition_placeholder_2'] = $space->nid;
+      foreach ($query_params as $placeholder => $value) {
+        if (!is_numeric($value)) {
+          $query_string = preg_replace("/{$placeholder}/", "'$value'", $query_string, 1);
+        }
+        else {
+          $query_string = preg_replace("/{$placeholder}/", $value, $query_string, 1);
+        }
+      }
+      $nids = db_query($query_string)->fetchCol(1);
       $nodes = entity_load('node', $nids);
       foreach ($nodes as $node) {
         if (!in_array($node->nid, $created['nids']) && !in_array($node->title, $created['titles'])) {
@@ -70,7 +84,6 @@ function pku_sections_menu_settings_form_submit($form, $form_state) {
         }
       }
     }
-
     $batch = array(
       'operations' => array(array('_pku_sections_menu_batch', array($links))),
       'finished' => '_pku_sections_menu_batch_finished',
