@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Contains all hooks definitions, common and helper functions.
@@ -29,7 +30,6 @@ function pku_sections_menu_menu() {
     'access arguments' => array('administer site configuration'),
     'file' => 'pku_sections_menu.admin.inc',
   );
-
 
   return $items;
 }
